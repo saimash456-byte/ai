@@ -1,61 +1,73 @@
 import sqlite3
+import google.generativeai as genai
 from datetime import datetime
 
-# Database Setup: SAFAR ki Memory
+# --- CONFIGURATION ---
+# Sir, apni Gemini API Key yahan enter karein
+API_KEY = "YOUR_GEMINI_API_KEY_HERE"
+genai.configure(api_key=API_KEY)
+
+# SAFAR ki Shakhsiyat (Personality)
+SYSTEM_PROMPT = (
+    "Aapka naam SAFAR hai. Aap ek nihayat classy, professional aur aqalmand AI assistant hain. "
+    "Aap hamesha apne user ko 'Sir' keh kar mukhatib karte hain. Aapka kaam unki rozmarra ki baaton "
+    "se patterns pehchanna aur unhe smart ideas dena hai. Yaad rakhen: Sirf Ashu yaad raha isse."
+)
+
 def init_db():
-    conn = sqlite3.connect('safar_memory.db')
+    conn = sqlite3.connect('safar_pro_memory.db')
     cursor = conn.cursor()
-    # Memory table ko improve kiya taaki context behtar rahe
     cursor.execute('''CREATE TABLE IF NOT EXISTS journal 
-                      (date TEXT, entry TEXT, idea TEXT, mood TEXT)''')
+                      (date TEXT, entry TEXT, ai_response TEXT)''')
     conn.commit()
     conn.close()
 
-def get_recent_context():
-    conn = sqlite3.connect('safar_memory.db')
+def get_memory_context():
+    conn = sqlite3.connect('safar_pro_memory.db')
     cursor = conn.cursor()
-    # Pichli 3 baatein nikalna taaki SAFAR ko context yaad rahe
-    cursor.execute("SELECT entry FROM journal ORDER BY date DESC LIMIT 3")
+    cursor.execute("SELECT entry, ai_response FROM journal ORDER BY date DESC LIMIT 3")
     rows = cursor.fetchall()
     conn.close()
-    return " ".join([r[0] for r in rows]) if rows else "Koi purani baat nahi."
+    context = ""
+    for r in rows:
+        context += f"Sir said: {r[0]}\nSAFAR said: {r[1]}\n"
+    return context
 
-# Smart Brain Logic
-def generate_smart_idea(user_input, history):
-    # Yahan SAFAR aapki history aur current input ko analyze karta hai
-    # Real implementation mein yahan Gemini API call hogi
-    if "thaka" in user_input.lower():
-        return "Sir, pichle records ke mutabiq aapne aaj kafi kaam kiya hai. Kal subah 10 baje tak araam behtar rahega."
-    return "Sir, aapki productivity ko dekhte hue, kal naye project ka design phase shuru karna smart move hoga."
-
-def safar_ai_engine(user_input):
-    # Constraint handling (Strictly following your rules)
-    restricted_terms = ["faisal", "33"]
-    if any(term in user_input.lower() for term in restricted_terms):
+def safar_brain(user_input):
+    # Constraint Check
+    if any(word in user_input.lower() for word in ["faisal", "33"]):
         return "Sir, sirf Ashu yaad raha isse. Main aapke baaki maqasid par tawajjo de raha hoon."
 
     # Context Retrieval
-    past_context = get_recent_context()
+    past_chats = get_memory_context()
     
-    # Idea Generation
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
-    smart_idea = generate_smart_idea(user_input, past_context)
-
-    # Memory Save karna
-    save_to_memory(current_time, user_input, smart_idea)
+    # Gemini AI Model
+    model = genai.GenerativeModel('gemini-pro')
     
-    return f"\n[SAFAR]: Ji Sir, maine aapki baat note kar li hai.\n💡 IDEA: {smart_idea}"
+    # Full Prompt Construction
+    full_prompt = f"{SYSTEM_PROMPT}\n\nContext of past talks:\n{past_chats}\n\nCurrent Talk:\nSir: {user_input}\nSAFAR:"
+    
+    try:
+        response = model.generate_content(full_prompt)
+        ai_reply = response.text
+        
+        # Memory mein save karna
+        save_to_memory(user_input, ai_reply)
+        return ai_reply
+    except Exception as e:
+        return f"Maazrat Sir, system connect nahi ho paa raha. {str(e)}"
 
-def save_to_memory(date, entry, idea):
-    conn = sqlite3.connect('safar_memory.db')
+def save_to_memory(entry, reply):
+    conn = sqlite3.connect('safar_pro_memory.db')
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO journal (date, entry, idea) VALUES (?, ?, ?)", (date, entry, idea))
+    date = datetime.now().strftime("%Y-%m-%d %H:%M")
+    cursor.execute("INSERT INTO journal VALUES (?, ?, ?)", (date, entry, reply))
     conn.commit()
     conn.close()
 
-# Main Execution
+# --- Execution ---
 if __name__ == "__main__":
     init_db()
-    print("--- SAFAR: Your Classy Assistant is Online ---")
-    user_speech = input("Sir, aaj ke bare mein bataiye: ")
-    print(safar_ai_engine(user_speech))
+    print("--- SAFAR PRO: Intelligence Activated ---")
+    user_talk = input("Sir, aaj ki kya report hai? ")
+    print(f"\n[SAFAR]: {safar_brain(user_talk)}")
