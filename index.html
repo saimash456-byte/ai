@@ -5,48 +5,57 @@ from datetime import datetime
 def init_db():
     conn = sqlite3.connect('safar_memory.db')
     cursor = conn.cursor()
+    # Memory table ko improve kiya taaki context behtar rahe
     cursor.execute('''CREATE TABLE IF NOT EXISTS journal 
-                      (date TEXT, entry TEXT, idea TEXT)''')
+                      (date TEXT, entry TEXT, idea TEXT, mood TEXT)''')
     conn.commit()
     conn.close()
 
-# Core Logic
+def get_recent_context():
+    conn = sqlite3.connect('safar_memory.db')
+    cursor = conn.cursor()
+    # Pichli 3 baatein nikalna taaki SAFAR ko context yaad rahe
+    cursor.execute("SELECT entry FROM journal ORDER BY date DESC LIMIT 3")
+    rows = cursor.fetchall()
+    conn.close()
+    return " ".join([r[0] for r in rows]) if rows else "Koi purani baat nahi."
+
+# Smart Brain Logic
+def generate_smart_idea(user_input, history):
+    # Yahan SAFAR aapki history aur current input ko analyze karta hai
+    # Real implementation mein yahan Gemini API call hogi
+    if "thaka" in user_input.lower():
+        return "Sir, pichle records ke mutabiq aapne aaj kafi kaam kiya hai. Kal subah 10 baje tak araam behtar rahega."
+    return "Sir, aapki productivity ko dekhte hue, kal naye project ka design phase shuru karna smart move hoga."
+
 def safar_ai_engine(user_input):
-    # Constraint handling
+    # Constraint handling (Strictly following your rules)
     restricted_terms = ["faisal", "33"]
     if any(term in user_input.lower() for term in restricted_terms):
         return "Sir, sirf Ashu yaad raha isse. Main aapke baaki maqasid par tawajjo de raha hoon."
 
-    # Smart Idea Generation (Sample Logic)
-    # Note: Yahan aap LLM API (Gemini/GPT) connect kar sakte hain
+    # Context Retrieval
+    past_context = get_recent_context()
+    
+    # Idea Generation
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
-    smart_idea = f"Sir, aapne jo bataya uske mutabiq kal subah 9 baje focus work behtar rahega."
+    smart_idea = generate_smart_idea(user_input, past_context)
 
     # Memory Save karna
     save_to_memory(current_time, user_input, smart_idea)
     
-    return f"Safar: Ji Sir, noted. Mera idea hai: {smart_idea}"
+    return f"\n[SAFAR]: Ji Sir, maine aapki baat note kar li hai.\n💡 IDEA: {smart_idea}"
 
 def save_to_memory(date, entry, idea):
     conn = sqlite3.connect('safar_memory.db')
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO journal VALUES (?, ?, ?)", (date, entry, idea))
+    cursor.execute("INSERT INTO journal (date, entry, idea) VALUES (?, ?, ?)", (date, entry, idea))
     conn.commit()
     conn.close()
 
-def get_history():
-    conn = sqlite3.connect('safar_memory.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM journal ORDER BY date DESC LIMIT 3")
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
-
-# Execution
-init_db()
-print("--- SAFAR: Online & Classy ---")
-entry = input("Sir, aaj aapka din kaisa raha? ")
-print(safar_ai_engine(entry))
-
-# History check (Optional)
-# print("\n--- Recent Memory ---", get_history())
+# Main Execution
+if __name__ == "__main__":
+    init_db()
+    print("--- SAFAR: Your Classy Assistant is Online ---")
+    user_speech = input("Sir, aaj ke bare mein bataiye: ")
+    print(safar_ai_engine(user_speech))
