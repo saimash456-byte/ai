@@ -1,0 +1,52 @@
+import sqlite3
+from datetime import datetime
+
+# Database Setup: SAFAR ki Memory
+def init_db():
+    conn = sqlite3.connect('safar_memory.db')
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS journal 
+                      (date TEXT, entry TEXT, idea TEXT)''')
+    conn.commit()
+    conn.close()
+
+# Core Logic
+def safar_ai_engine(user_input):
+    # Constraint handling
+    restricted_terms = ["faisal", "33"]
+    if any(term in user_input.lower() for term in restricted_terms):
+        return "Sir, sirf Ashu yaad raha isse. Main aapke baaki maqasid par tawajjo de raha hoon."
+
+    # Smart Idea Generation (Sample Logic)
+    # Note: Yahan aap LLM API (Gemini/GPT) connect kar sakte hain
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+    smart_idea = f"Sir, aapne jo bataya uske mutabiq kal subah 9 baje focus work behtar rahega."
+
+    # Memory Save karna
+    save_to_memory(current_time, user_input, smart_idea)
+    
+    return f"Safar: Ji Sir, noted. Mera idea hai: {smart_idea}"
+
+def save_to_memory(date, entry, idea):
+    conn = sqlite3.connect('safar_memory.db')
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO journal VALUES (?, ?, ?)", (date, entry, idea))
+    conn.commit()
+    conn.close()
+
+def get_history():
+    conn = sqlite3.connect('safar_memory.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM journal ORDER BY date DESC LIMIT 3")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+# Execution
+init_db()
+print("--- SAFAR: Online & Classy ---")
+entry = input("Sir, aaj aapka din kaisa raha? ")
+print(safar_ai_engine(entry))
+
+# History check (Optional)
+# print("\n--- Recent Memory ---", get_history())
